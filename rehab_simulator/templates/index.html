@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="C521M 復健機 TCP client 模擬儀表板，提供卡號、RPM、心率與阻力等級測試。">
+  <title>C521M 機台模擬器 · Rehab Device Lab</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="{{ url_for('static', filename='app.js') }}" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-symbol" aria-hidden="true">R<span>↗</span></span><div><strong>REHAB <span>DEVICE LAB</span></strong><small>C521M 機台模擬器</small></div></div>
+    <div class="header-status"><span class="protocol-pill">TCP CLIENT</span><span id="connectionBadge" class="status-badge"><i></i><span>載入中</span></span></div>
+  </header>
+  <main>
+    <section class="page-heading"><div><p class="eyebrow">DEVICE SIMULATOR / 01</p><h1>機台測試台</h1><p>模擬卡片與運動數值，即時檢視主機的控制指令。</p></div><div class="session-meta"><span class="live-dot"></span>2019.04.24 協定<span class="muted">單一模擬機台</span></div></section>
+    <div id="serviceError" class="notice danger" role="alert" hidden></div>
+    <section class="panel connection-panel" aria-labelledby="connectionTitle">
+      <div class="section-title"><h2 id="connectionTitle"><span class="section-number">01</span>目標主機</h2><span id="connectionHint" class="muted">啟動時不會自動連線</span></div>
+      <form id="settingsForm" class="connection-form">
+        <div class="field host-field"><label for="socketServer">socket_server</label><input id="socketServer" name="socket_server" placeholder="192.168.0.100" maxlength="253" required spellcheck="false" autocomplete="off"></div>
+        <div class="field port-field"><label for="socketPort">TCP 連接埠</label><input id="socketPort" name="socket_port" type="number" min="1" max="65535" step="1" required></div>
+        <label class="check-field"><input id="autoReconnect" type="checkbox">斷線自動重連</label>
+        <div class="connection-actions"><button type="submit" id="saveSettings" class="button secondary">儲存設定</button><button type="button" id="connectButton" class="button primary">連線主機 <span aria-hidden="true">↗</span></button><button type="button" id="disconnectButton" class="button secondary" disabled>斷線</button></div>
+      </form>
+      <div class="connection-bottom"><span id="targetText">—</span><span id="settingsNote" class="muted">網頁修改的是傳送目的地，不是網頁監聽位址。</span><button id="resetSettings" class="text-button" type="button" hidden>還原目前設定</button></div>
+    </section>
+
+    <section class="telemetry-section" aria-labelledby="telemetryTitle">
+      <div class="section-title outside"><h2 id="telemetryTitle"><span class="section-number">02</span>運動數值</h2><label class="switch-label"><input type="checkbox" id="autoReport" checked><span>追蹤中變值自動回報</span></label></div>
+      <div class="metric-grid">
+        {% for field, title, unit, code in [('rpm','踩踏轉速','RPM','00'), ('heart_rate','心率','BPM','02'), ('reported_level','機台回報阻力','LEVEL','01')] %}
+        <article class="panel metric-card metric-{{ field }}">
+          <div class="metric-heading"><h3>{{ title }}</h3><span class="code-label">0x23 · {{ code }}</span></div>
+          <div class="metric-reading"><strong id="{{ field }}Display">0</strong><span>{{ unit }}</span></div>
+          <input type="range" id="{{ field }}Range" min="0" max="255" step="1" value="0" aria-label="{{ title }}滑桿" data-field="{{ field }}">
+          <div class="range-labels"><span>0</span><span>255</span></div>
+          <div class="metric-controls"><input id="{{ field }}Input" type="number" min="0" max="255" step="1" value="0" aria-label="{{ title }}數值" data-field="{{ field }}"><button class="button secondary send-telemetry" data-field="{{ field }}" type="button" disabled>單次送出 <span aria-hidden="true">↗</span></button></div>
+          <p class="metric-foot">最後送出 <span id="{{ field }}Sent">—</span> {{ unit }}</p>
+        </article>
+        {% endfor %}
+      </div>
+      <div class="telemetry-foot"><span id="trackingHint">尚未開始追蹤；單次送出可略過追蹤條件。</span><span>數值範圍 0–255 · 無自動波形</span></div>
+      <div id="levelWarning" class="notice warning" role="status" hidden></div>
+    </section>
+
+    <div class="work-grid">
+      <section class="panel card-panel" aria-labelledby="cardTitle">
+        <div class="section-title"><h2 id="cardTitle"><span class="section-number">03</span>卡片與事件</h2><span class="code-label">0x21 / 0x24</span></div>
+        <label for="cardUid" class="standalone-label">卡片 UID <span class="muted">HEX，保留前導零</span></label>
+        <div class="rfid-control"><input id="cardUid" value="01234567" maxlength="765" spellcheck="false" autocomplete="off" aria-describedby="uidHelp"><button id="sendCard" class="button primary" type="button" disabled>模擬刷卡 <span aria-hidden="true">↗</span></button></div>
+        <p id="uidHelp" class="muted help">可輸入 01 23 45 67。此為人工範例，不會在載入時傳送。</p>
+        <div class="delivery-state"><span class="muted">最近手動傳送</span><strong id="deliveryTitle">尚無事件</strong><p id="deliveryDetail">TCP 寫入成功不等於主機已確認。</p></div>
+        <div class="fault-row"><div><strong>異常停止測試</strong><small>停止追蹤並通知主機；心率失聯時附加狀態通知。</small></div><button id="sendFault" class="button danger-outline" type="button" disabled>觸發異常停止</button></div>
+      </section>
+
+      <section class="panel machine-panel" aria-labelledby="machineTitle">
+        <div class="section-title"><h2 id="machineTitle"><span class="section-number">04</span>主機指令與機台</h2><span id="trackingBadge" class="state-tag">未追蹤</span></div>
+        <div class="received-grid"><div><span class="muted">主機要求的阻力</span><strong><span id="targetLevel">—</span><small>LEVEL</small></strong></div><div><span class="muted">最近接收指令</span><strong id="lastCommand" class="command-reading">等待主機指令</strong></div></div>
+        <div id="pendingControl" class="notice subtle" role="status" hidden></div>
+        <div class="machine-options"><label class="switch-label"><input id="autoFollow" type="checkbox" checked><span>虛擬硬體自動跟隨指令</span></label><p class="help muted">關閉後可手動設定狀態與回報阻力；暫停只回覆確認，Level 0 不套用。</p></div>
+        <div class="device-options"><label class="check-field"><input id="readerReady" type="checkbox">讀卡器正常</label><label class="check-field"><input id="hrReady" type="checkbox">心率裝置正常</label><div class="field"><label for="machineState">機台硬體狀態</label><select id="machineState"><option value="Idle">Idle · 待機</option><option value="Start">Start · 運轉</option><option value="Pause">Pause · 暫停</option><option value="End" selected>End · 結束</option></select></div></div>
+        <p class="help muted">狀態查詢只有 Start 回覆正常。Level 是阻力等級，並非 Nm 扭力。</p>
+      </section>
+    </div>
+
+    <section class="panel events-panel" aria-labelledby="eventsTitle">
+      <div class="section-title"><h2 id="eventsTitle"><span class="section-number">05</span>通訊紀錄 <span id="eventCount" class="count-badge">0</span></h2><div class="events-tools"><label class="sr-only" for="eventFilter">紀錄篩選</label><select id="eventFilter"><option value="all">全部紀錄</option><option value="TX">TX · 傳送</option><option value="RX">RX · 接收</option><option value="SYS">系統事件</option></select><a class="button secondary small" href="/api/events/export" download>下載 JSON</a><button id="clearEvents" class="button secondary small" type="button">清除</button></div></div>
+      <div class="event-table-wrap"><table><thead><tr><th>時間</th><th>方向</th><th>命令</th><th>內容／原始 HEX</th><th>校驗／次數</th></tr></thead><tbody id="eventsBody"><tr><td colspan="5" class="empty-state">尚無通訊資料。連線後可從此檢查每一筆收送。</td></tr></tbody></table></div>
+      <div class="events-footer"><span>最多保留 1,000 筆 · 僅存於記憶體</span><span>TX <strong id="txCount">0</strong><span class="counter-divider">/</span> RX <strong id="rxCount">0</strong><span id="pollStatus">同步中</span></span></div>
+    </section>
+    <footer class="page-footer"><span>REHAB DEVICE LAB <span class="muted">/ v0.1.0</span></span><span>可信任區網測試用 · 無登入保護 · 多分頁共用同一部模擬機台</span></footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <dialog id="confirmDialog"><form method="dialog"><h2 id="confirmTitle">確認操作</h2><p id="confirmDescription"></p><div class="dialog-actions"><button value="cancel" class="button secondary">取消</button><button value="confirm" class="button primary">確認</button></div></form></dialog>
+</body>
+</html>

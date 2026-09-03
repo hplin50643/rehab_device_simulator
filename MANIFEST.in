@@ -1,0 +1,7 @@
+include README.md CONTRIBUTING.md CHANGELOG.md constraints.txt config.example.json
+recursive-include docs *.md *.jpg
+recursive-include tests *.py
+recursive-include rehab_simulator/templates *.html
+recursive-include rehab_simulator/static *.css *.js
+prune instance
+prune .venv

@@ -1,6 +1,6 @@
 # 復健機 TCP 模擬儀表板
 
-[![Python tests](https://github.com/root50643/rehab_device_simulator/actions/workflows/tests.yml/badge.svg)](https://github.com/root50643/rehab_device_simulator/actions/workflows/tests.yml)
+[![Python tests](https://github.com/hplin50643/rehab_device_simulator/actions/workflows/tests.yml/badge.svg)](https://github.com/hplin50643/rehab_device_simulator/actions/workflows/tests.yml)
 
 用瀏覽器模擬 C521M 樹莓派程式，向指定 TCP 主機傳送卡片 UID、轉速、心率與阻力等級，接收開始／停止／暫停、狀態查詢及阻力設定。不需要讀卡機、藍牙、GPIO 或實體復健機。
 
@@ -94,7 +94,7 @@ python -m ruff format --check .
 python -m build
 ```
 
-所有自動化 TCP 測試只連 loopback 臨時埠，不會連到設定的現場 IP。GitHub Actions 於 push／pull request 觸發 Windows／Ubuntu + Python 3.12 測試；執行結果見 [Actions](https://github.com/root50643/rehab_device_simulator/actions/workflows/tests.yml)。
+所有自動化 TCP 測試只連 loopback 臨時埠，不會連到設定的現場 IP。GitHub Actions 於 push／pull request 觸發 Windows／Ubuntu + Python 3.12 測試；執行結果見 [Actions](https://github.com/hplin50643/rehab_device_simulator/actions/workflows/tests.yml)。
 
 ## 文件與資料
 
@@ -106,4 +106,4 @@ python -m build
 
 只有連線設定持久化於 `instance/settings.json`。數值、連線、計數與通訊事件都在記憶體，重新啟動即清除；先下載 JSON 才能保留事件。
 
-公開儲存庫：[root50643/rehab_device_simulator](https://github.com/root50643/rehab_device_simulator)。Repository 只包含本專案程式、文件與人工範例；不包含 APK、舊系統備份、真實卡號、現場設定、虛擬環境或執行期紀錄。目前未指定開源授權，公開儲存庫不代表已授予開源使用授權。
+公開儲存庫：[hplin50643/rehab_device_simulator](https://github.com/hplin50643/rehab_device_simulator)。Repository 只包含本專案程式、文件與人工範例；不包含 APK、舊系統備份、真實卡號、現場設定、虛擬環境或執行期紀錄。目前未指定開源授權，公開儲存庫不代表已授予開源使用授權。
